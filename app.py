@@ -22,10 +22,12 @@ PONTOS = {
 }
 
 TABLE_URL = f"{SUPABASE_URL}/rest/v1/participantes_longao"
+
+# ✅ HEADER CORRETO
 HEADERS = {
     "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
+    "Accept": "application/json"
 }
 
 
@@ -45,7 +47,7 @@ def buscar_participantes(ponto_id):
 
 
 def inserir_participante(ponto, nome, horario, duracao):
-    requests.post(
+    response = requests.post(
         TABLE_URL,
         headers=HEADERS,
         json={
@@ -56,10 +58,11 @@ def inserir_participante(ponto, nome, horario, duracao):
         },
         timeout=15
     )
+    response.raise_for_status()
 
 
 def remover_participante(ponto, participante_id):
-    requests.delete(
+    response = requests.delete(
         TABLE_URL,
         headers=HEADERS,
         params={
@@ -68,6 +71,7 @@ def remover_participante(ponto, participante_id):
         },
         timeout=15
     )
+    response.raise_for_status()
 
 
 def render_participantes(ponto_id):
@@ -109,13 +113,13 @@ def home():
                 color: #1E1E1E;
             }}
 
-            .logo {{
-                width: 200px;
-            }}
-
             .logo-group {{
                 text-align: center;
                 margin-bottom: 10px;
+            }}
+
+            .logo {{
+                width: 200px;
             }}
 
             h1 {{
@@ -168,11 +172,16 @@ def home():
                 display: flex;
                 justify-content: space-between;
                 margin-top: 10px;
+                gap: 10px;
             }}
 
             .footer {{
                 text-align: center;
                 margin-top: 30px;
+            }}
+
+            .empty {{
+                color: #777;
             }}
         </style>
     </head>
@@ -181,7 +190,7 @@ def home():
 
         <div class="logo-group">
             <img src="/static/logo.png" class="logo">
-            <img src="/static/deeprun.png" style="width:120px;">
+            <img src="/static/deeprun.png" style="width:120px; margin-top:10px;">
         </div>
 
         <h1>Cadê você no longão?</h1>
