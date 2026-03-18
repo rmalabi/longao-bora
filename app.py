@@ -1,6 +1,14 @@
+import os
+import requests
 from flask import Flask, request, redirect, url_for
 
 app = Flask(__name__)
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError("Defina SUPABASE_URL e SUPABASE_ANON_KEY nas variáveis de ambiente.")
 
 PONTOS = {
     "cavaleiros": {
@@ -13,16 +21,59 @@ PONTOS = {
     }
 }
 
-participantes = {
-    "cavaleiros": [],
-    "tenda_imbetiba": []
+TABLE_URL = f"{SUPABASE_URL}/rest/v1/participantes_longao"
+HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json"
 }
 
-proximo_id = 1
+
+def buscar_participantes(ponto_id):
+    response = requests.get(
+        TABLE_URL,
+        headers=HEADERS,
+        params={
+            "select": "*",
+            "ponto": f"eq.{ponto_id}",
+            "order": "created_at.asc"
+        },
+        timeout=15
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def inserir_participante(ponto, nome, horario, duracao):
+    response = requests.post(
+        TABLE_URL,
+        headers=HEADERS,
+        json={
+            "ponto": ponto,
+            "nome": nome,
+            "horario": horario,
+            "duracao": duracao
+        },
+        timeout=15
+    )
+    response.raise_for_status()
+
+
+def remover_participante(ponto, participante_id):
+    response = requests.delete(
+        TABLE_URL,
+        headers=HEADERS,
+        params={
+            "id": f"eq.{participante_id}",
+            "ponto": f"eq.{ponto}"
+        },
+        timeout=15
+    )
+    response.raise_for_status()
 
 
 def render_participantes(ponto_id):
-    lista = participantes[ponto_id]
+    lista = buscar_participantes(ponto_id)
 
     if not lista:
         return '<p class="empty">Ainda ninguém marcou esse ponto.</p>'
@@ -54,7 +105,6 @@ def home():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Longão Bora</title>
-
         <style>
             body {{
                 font-family: Arial, sans-serif;
@@ -64,29 +114,24 @@ def home():
                 margin: auto;
                 color: #1E1E1E;
             }}
-
             .logo {{
                 width: 220px;
                 display: block;
                 margin: 0 auto 10px auto;
             }}
-
             h1 {{
                 text-align: center;
                 margin-bottom: 4px;
             }}
-
             h3 {{
                 text-align: center;
                 color: #555;
                 margin-top: 0;
             }}
-
             .subtitle {{
                 text-align: center;
                 margin-bottom: 20px;
             }}
-
             .card {{
                 background: white;
                 padding: 20px;
@@ -94,11 +139,9 @@ def home():
                 border-radius: 14px;
                 box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
             }}
-
             .actions {{
                 margin-bottom: 12px;
             }}
-
             button {{
                 padding: 10px 15px;
                 border: none;
@@ -109,30 +152,24 @@ def home():
                 cursor: pointer;
                 margin-top: 5px;
             }}
-
             button:hover {{
                 background: #0C8A54;
             }}
-
             .map-btn {{
                 background: #1E1E1E;
             }}
-
             .map-btn:hover {{
                 background: #000;
             }}
-
             .remove-btn {{
                 background: #B3261E;
                 padding: 8px 12px;
                 font-size: 12px;
                 margin-top: 0;
             }}
-
             .remove-btn:hover {{
                 background: #8C1C16;
             }}
-
             input {{
                 width: 100%;
                 padding: 10px;
@@ -141,13 +178,11 @@ def home():
                 border: 1px solid #ccc;
                 box-sizing: border-box;
             }}
-
             .participants-list {{
                 list-style: none;
                 padding-left: 0;
                 margin-top: 10px;
             }}
-
             .participant-item {{
                 display: flex;
                 justify-content: space-between;
@@ -156,49 +191,37 @@ def home():
                 padding: 10px 0;
                 border-bottom: 1px solid #eee;
             }}
-
             .participant-item:last-child {{
                 border-bottom: none;
             }}
-
             .remove-form {{
                 margin: 0;
             }}
-
             .empty {{
                 color: #777;
             }}
-
             @media (max-width: 600px) {{
                 .participant-item {{
                     flex-direction: column;
                     align-items: flex-start;
                 }}
-
                 .remove-form {{
                     width: 100%;
                 }}
-
                 .remove-btn {{
                     width: 100%;
                 }}
             }}
         </style>
     </head>
-
     <body>
         <img src="/static/logo.png" class="logo">
-
         <h1>Cadê você no longão?</h1>
         <h3>Bora Sports</h3>
-
-        <p class="subtitle">
-            Escolha seu ponto de saída e informe horário + duração.
-        </p>
+        <p class="subtitle">Escolha seu ponto de saída e informe horário + duração.</p>
 
         <div class="card">
             <h2>📍 {PONTOS['cavaleiros']['nome']}</h2>
-
             <div class="actions">
                 <a href="{PONTOS['cavaleiros']['maps']}" target="_blank">
                     <button type="button" class="map-btn">Abrir no GPS</button>
@@ -209,7 +232,6 @@ def home():
                 <input type="text" name="nome" placeholder="Seu nome" required>
                 <input type="text" name="horario" placeholder="Horário de partida (ex: 05:20)" required>
                 <input type="text" name="duracao" placeholder="Duração (ex: 2h, 1h45)" required>
-
                 <button type="submit">Entrar nesse ponto</button>
             </form>
 
@@ -219,7 +241,6 @@ def home():
 
         <div class="card">
             <h2>📍 {PONTOS['tenda_imbetiba']['nome']}</h2>
-
             <div class="actions">
                 <a href="{PONTOS['tenda_imbetiba']['maps']}" target="_blank">
                     <button type="button" class="map-btn">Abrir no GPS</button>
@@ -230,14 +251,12 @@ def home():
                 <input type="text" name="nome" placeholder="Seu nome" required>
                 <input type="text" name="horario" placeholder="Horário de partida (ex: 05:30)" required>
                 <input type="text" name="duracao" placeholder="Duração (ex: 2h)" required>
-
                 <button type="submit">Entrar nesse ponto</button>
             </form>
 
             <h4>Participantes</h4>
             {render_participantes("tenda_imbetiba")}
         </div>
-
     </body>
     </html>
     """
@@ -245,31 +264,20 @@ def home():
 
 @app.route("/entrar/<ponto>", methods=["POST"])
 def entrar(ponto):
-    global proximo_id
-
     nome = request.form.get("nome", "").strip()
     horario = request.form.get("horario", "").strip()
     duracao = request.form.get("duracao", "").strip()
 
-    if ponto in participantes and nome and horario and duracao:
-        participantes[ponto].append({
-            "id": proximo_id,
-            "nome": nome,
-            "horario": horario,
-            "duracao": duracao
-        })
-        proximo_id += 1
+    if ponto in PONTOS and nome and horario and duracao:
+        inserir_participante(ponto, nome, horario, duracao)
 
     return redirect(url_for("home"))
 
 
 @app.route("/remover/<ponto>/<int:participante_id>", methods=["POST"])
 def remover(ponto, participante_id):
-    if ponto in participantes:
-        participantes[ponto] = [
-            item for item in participantes[ponto]
-            if item["id"] != participante_id
-        ]
+    if ponto in PONTOS:
+        remover_participante(ponto, participante_id)
 
     return redirect(url_for("home"))
 
