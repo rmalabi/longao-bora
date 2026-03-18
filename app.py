@@ -17,13 +17,12 @@ PONTOS = {
     },
     "tenda_imbetiba": {
         "nome": "Tenda Imbetiba",
-        "maps": "https://www.google.com/maps?q=Imbetiba+Macae"
+        "maps": "https://www.google.com/maps?q=Bora+Sports"
     }
 }
 
 TABLE_URL = f"{SUPABASE_URL}/rest/v1/participantes_longao"
 
-# ✅ HEADER CORRETO
 HEADERS = {
     "apikey": SUPABASE_KEY,
     "Content-Type": "application/json",
@@ -32,46 +31,60 @@ HEADERS = {
 
 
 def buscar_participantes(ponto_id):
-    response = requests.get(
-        TABLE_URL,
-        headers=HEADERS,
-        params={
-            "select": "*",
-            "ponto": f"eq.{ponto_id}",
-            "order": "created_at.asc"
-        },
-        timeout=15
-    )
-    response.raise_for_status()
-    return response.json()
+    try:
+        response = requests.get(
+            TABLE_URL,
+            headers=HEADERS,
+            params={
+                "select": "*",
+                "ponto": f"eq.{ponto_id}",
+                "order": "created_at.asc"
+            },
+            timeout=15
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        print(f"Erro ao buscar participantes no Supabase: {e}")
+        return []
 
 
 def inserir_participante(ponto, nome, horario, duracao):
-    response = requests.post(
-        TABLE_URL,
-        headers=HEADERS,
-        json={
-            "ponto": ponto,
-            "nome": nome,
-            "horario": horario,
-            "duracao": duracao
-        },
-        timeout=15
-    )
-    response.raise_for_status()
+    try:
+        response = requests.post(
+            TABLE_URL,
+            headers=HEADERS,
+            json={
+                "ponto": ponto,
+                "nome": nome,
+                "horario": horario,
+                "duracao": duracao
+            },
+            timeout=15
+        )
+        response.raise_for_status()
+        return True
+    except requests.RequestException as e:
+        print(f"Erro ao inserir participante no Supabase: {e}")
+        return False
 
 
 def remover_participante(ponto, participante_id):
-    response = requests.delete(
-        TABLE_URL,
-        headers=HEADERS,
-        params={
-            "id": f"eq.{participante_id}",
-            "ponto": f"eq.{ponto}"
-        },
-        timeout=15
-    )
-    response.raise_for_status()
+    try:
+        response = requests.delete(
+            TABLE_URL,
+            headers=HEADERS,
+            params={
+                "id": f"eq.{participante_id}",
+                "ponto": f"eq.{ponto}"
+            },
+            timeout=15
+        )
+        response.raise_for_status()
+        return True
+    except requests.RequestException as e:
+        print(f"Erro ao remover participante no Supabase: {e}")
+        return False
 
 
 def render_participantes(ponto_id):
@@ -86,12 +99,17 @@ def render_participantes(ponto_id):
         <li class="participant-item">
             <span><strong>{item["nome"]}</strong> — saída: {item["horario"]} — treino: {item["duracao"]}</span>
             <form action="/remover/{ponto_id}/{item["id"]}" method="post">
-                <button class="remove-btn">Remover</button>
+                <button type="submit" class="remove-btn">Remover</button>
             </form>
         </li>
         """
 
     return f'<ul class="participants-list">{itens}</ul>'
+
+
+@app.route("/healthz")
+def healthz():
+    return "ok", 200
 
 
 @app.route("/")
@@ -124,6 +142,18 @@ def home():
 
             h1 {{
                 text-align: center;
+                margin-bottom: 6px;
+            }}
+
+            h3 {{
+                text-align: center;
+                color: #555;
+                margin-top: 0;
+            }}
+
+            .subtitle {{
+                text-align: center;
+                margin-bottom: 20px;
             }}
 
             .card {{
@@ -143,16 +173,18 @@ def home():
                 cursor: pointer;
                 margin-top: 5px;
                 width: 100%;
+                font-weight: bold;
             }}
 
             .map-btn {{
-                background: black;
+                background: #111;
             }}
 
             .remove-btn {{
-                background: red;
+                background: #c62828;
                 width: auto;
-                padding: 5px 10px;
+                padding: 6px 10px;
+                margin-top: 0;
             }}
 
             input {{
@@ -161,18 +193,27 @@ def home():
                 margin-top: 8px;
                 border-radius: 8px;
                 border: 1px solid #ccc;
+                box-sizing: border-box;
             }}
 
             .participants-list {{
                 list-style: none;
                 padding: 0;
+                margin-top: 10px;
             }}
 
             .participant-item {{
                 display: flex;
                 justify-content: space-between;
+                align-items: center;
                 margin-top: 10px;
                 gap: 10px;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 10px;
+            }}
+
+            .participant-item:last-child {{
+                border-bottom: none;
             }}
 
             .footer {{
@@ -183,30 +224,43 @@ def home():
             .empty {{
                 color: #777;
             }}
+
+            @media (max-width: 600px) {{
+                .participant-item {{
+                    flex-direction: column;
+                    align-items: flex-start;
+                }}
+
+                .remove-btn {{
+                    width: 100%;
+                }}
+            }}
         </style>
     </head>
 
     <body>
-
         <div class="logo-group">
             <img src="/static/logo.png" class="logo">
+            <br>
             <img src="/static/deeprun.png" style="width:120px; margin-top:10px;">
         </div>
 
         <h1>Cadê você no longão?</h1>
+        <h3>Bora Sports</h3>
+        <p class="subtitle">Escolha seu ponto de saída e informe horário + duração.</p>
 
         <div class="card">
             <h2>{PONTOS['cavaleiros']['nome']}</h2>
 
             <a href="{PONTOS['cavaleiros']['maps']}" target="_blank">
-                <button class="map-btn">Abrir no GPS</button>
+                <button type="button" class="map-btn">Abrir no GPS</button>
             </a>
 
             <form action="/entrar/cavaleiros" method="post">
                 <input name="nome" placeholder="Seu nome" required>
                 <input name="horario" placeholder="Horário (05:20)" required>
                 <input name="duracao" placeholder="Duração (2h)" required>
-                <button>Entrar</button>
+                <button type="submit">Entrar</button>
             </form>
 
             <h4>Participantes</h4>
@@ -217,14 +271,14 @@ def home():
             <h2>{PONTOS['tenda_imbetiba']['nome']}</h2>
 
             <a href="{PONTOS['tenda_imbetiba']['maps']}" target="_blank">
-                <button class="map-btn">Abrir no GPS</button>
+                <button type="button" class="map-btn">Abrir no GPS</button>
             </a>
 
             <form action="/entrar/tenda_imbetiba" method="post">
                 <input name="nome" placeholder="Seu nome" required>
                 <input name="horario" placeholder="Horário (05:30)" required>
                 <input name="duracao" placeholder="Duração (2h)" required>
-                <button>Entrar</button>
+                <button type="submit">Entrar</button>
             </form>
 
             <h4>Participantes</h4>
@@ -246,7 +300,6 @@ def home():
             <img src="/static/deeprun.png" style="width:100px;">
             <p>Powered by Deep Run 🐢🍺</p>
         </div>
-
     </body>
     </html>
     """
@@ -254,18 +307,20 @@ def home():
 
 @app.route("/entrar/<ponto>", methods=["POST"])
 def entrar(ponto):
-    inserir_participante(
-        ponto,
-        request.form["nome"],
-        request.form["horario"],
-        request.form["duracao"]
-    )
+    if ponto in PONTOS:
+        inserir_participante(
+            ponto,
+            request.form["nome"],
+            request.form["horario"],
+            request.form["duracao"]
+        )
     return redirect(url_for("home"))
 
 
-@app.route("/remover/<ponto>/<int:id>", methods=["POST"])
-def remover(ponto, id):
-    remover_participante(ponto, id)
+@app.route("/remover/<ponto>/<int:item_id>", methods=["POST"])
+def remover(ponto, item_id):
+    if ponto in PONTOS:
+        remover_participante(ponto, item_id)
     return redirect(url_for("home"))
 
 
