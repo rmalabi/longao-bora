@@ -66,6 +66,21 @@ def inserir_participante(ponto, nome, horario, duracao):
         return False
 
 
+def remover_participante(item_id):
+    try:
+        r = requests.delete(
+            TABLE_URL,
+            headers=HEADERS,
+            params={"id": f"eq.{item_id}"},
+            timeout=5
+        )
+        r.raise_for_status()
+        return True
+    except Exception as e:
+        print("ERRO REMOVER:", e)
+        return False
+
+
 def render_participantes(ponto_id):
     lista = buscar_participantes(ponto_id)
 
@@ -77,6 +92,10 @@ def render_participantes(ponto_id):
         itens += f"""
         <li class="participant-item">
             <span><strong>{item["nome"]}</strong> — saída: {item["horario"]} — treino: {item["duracao"]}</span>
+
+            <form action="/remover/{ponto_id}/{item["id"]}" method="post">
+                <button type="submit" class="remove-btn">❌</button>
+            </form>
         </li>
         """
 
@@ -104,6 +123,11 @@ def home():
                 max-width: 700px;
                 margin: auto;
                 color: #1E1E1E;
+            }}
+
+            .logo-top {{
+                text-align: center;
+                margin-bottom: 10px;
             }}
 
             h1 {{
@@ -146,6 +170,14 @@ def home():
                 background: #111;
             }}
 
+            .remove-btn {{
+                background: red;
+                width: auto;
+                padding: 6px 10px;
+                margin-left: 10px;
+                margin-top: 0;
+            }}
+
             input {{
                 width: 100%;
                 padding: 10px;
@@ -162,6 +194,10 @@ def home():
             }}
 
             .participant-item {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 10px;
                 margin-top: 10px;
                 border-bottom: 1px solid #eee;
                 padding-bottom: 10px;
@@ -174,10 +210,33 @@ def home():
             .empty {{
                 color: #777;
             }}
+
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+            }}
+
+            @media (max-width: 600px) {{
+                .participant-item {{
+                    flex-direction: column;
+                    align-items: flex-start;
+                }}
+
+                .remove-btn {{
+                    width: 100%;
+                    margin-left: 0;
+                }}
+            }}
         </style>
     </head>
 
     <body>
+        <div class="logo-top">
+            <img src="/static/logo.png" style="width:160px;">
+            <br>
+            <img src="/static/deeprun.png" style="width:100px; margin-top:10px;">
+        </div>
+
         <h1>Cadê você no longão?</h1>
         <h3>Bora Sports</h3>
         <p class="subtitle">Escolha seu ponto de saída e informe horário + duração.</p>
@@ -217,6 +276,21 @@ def home():
             <h4>Participantes</h4>
             {render_participantes("tenda_imbetiba")}
         </div>
+
+        <div class="card">
+            <h3>🚀 Tecnologias</h3>
+            <ul>
+                <li>Python</li>
+                <li>Flask</li>
+                <li>Supabase</li>
+                <li>Render</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <img src="/static/deeprun.png" style="width:100px;">
+            <p>Powered by Deep Run 🐢🍺</p>
+        </div>
     </body>
     </html>
     """
@@ -231,6 +305,13 @@ def entrar(ponto):
             request.form["horario"],
             request.form["duracao"]
         )
+    return redirect(url_for("home"))
+
+
+@app.route("/remover/<ponto>/<int:id>", methods=["POST"])
+def remover(ponto, id):
+    if ponto in PONTOS:
+        remover_participante(id)
     return redirect(url_for("home"))
 
 
