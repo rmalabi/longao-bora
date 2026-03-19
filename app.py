@@ -22,7 +22,7 @@ PONTOS = {
     },
     "tenda_imbetiba": {
         "nome": "Tenda Imbetiba",
-        "maps": "https://www.google.com/maps?q=Imbetiba+Macae"
+        "maps": "https://www.google.com/maps?q=Bora+Sports"
     }
 }
 
