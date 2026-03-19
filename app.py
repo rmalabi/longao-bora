@@ -65,6 +65,20 @@ def inserir_participante(ponto, nome, horario, duracao):
         print("ERRO INSERIR:", e)
         return False
 
+def remover_participante(item_id):
+    try:
+        r = requests.delete(
+            TABLE_URL,
+            headers=HEADERS,
+            params={"id": f"eq.{item_id}"},
+            timeout=5
+        )
+        r.raise_for_status()
+        return True
+    except Exception as e:
+        print("ERRO REMOVER:", e)
+        return False
+
 
 def render_participantes(ponto_id):
     lista = buscar_participantes(ponto_id)
@@ -77,11 +91,14 @@ def render_participantes(ponto_id):
         itens += f"""
         <li class="participant-item">
             <span><strong>{item["nome"]}</strong> — saída: {item["horario"]} — treino: {item["duracao"]}</span>
+
+            <form action="/remover/{item["id"]}" method="post">
+                <button type="submit" class="remove-btn">Remover</button>
+            </form>
         </li>
         """
 
     return f'<ul class="participants-list">{itens}</ul>'
-
 
 @app.route("/healthz")
 def healthz():
@@ -161,7 +178,18 @@ def home():
                 margin-top: 10px;
             }}
 
+            .remove-btn {{
+                background: #c62828;
+                width: auto;
+                padding: 6px 10px;
+                margin-top: 0;
+            }}
+
             .participant-item {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 10px;
                 margin-top: 10px;
                 border-bottom: 1px solid #eee;
                 padding-bottom: 10px;
@@ -233,6 +261,10 @@ def entrar(ponto):
         )
     return redirect(url_for("home"))
 
+@app.route("/remover/<int:item_id>", methods=["POST"])
+def remover(item_id):
+    remover_participante(item_id)
+    return redirect(url_for("home"))
 
 if __name__ == "__main__":
     app.run(debug=True)
