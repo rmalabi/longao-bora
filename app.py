@@ -15,29 +15,34 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
+
+def buscar():
+    try:
+        r = requests.get(TABLE_URL, headers=HEADERS, params={"select": "*"}, timeout=5)
+        return r.json()
+    except:
+        return []
+
+
 @app.route("/healthz")
 def healthz():
     return "ok", 200
 
+
 @app.route("/")
 def home():
-    try:
-        response = requests.get(
-            TABLE_URL,
-            headers=HEADERS,
-            params={"select": "*"},
-            timeout=5
-        )
+    lista = buscar()
 
-        print("STATUS:", response.status_code)
+    itens = ""
+    for p in lista:
+        itens += f"<li>{p.get('nome')} - {p.get('horario')}</li>"
 
-        if response.status_code == 200:
-            return f"<h1>OK Supabase</h1><pre>{response.json()}</pre>"
-        else:
-            return f"<h1>Erro Supabase</h1><p>Status: {response.status_code}</p><p>{response.text}</p>"
+    return f"""
+    <h1>Longão Bora</h1>
+    <p>Participantes:</p>
+    <ul>{itens}</ul>
+    """
 
-    except Exception as e:
-        return f"<h1>Erro conexão</h1><p>{e}</p>"
 
 if __name__ == "__main__":
     app.run(debug=True)
